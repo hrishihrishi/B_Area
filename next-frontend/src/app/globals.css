@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Core Brand Neutrals */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    /* Surfaces & Containers */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Brand Primary - B2B Trust Navy */
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Brand Secondary - Slate / Steel */
+    --secondary: 215 16% 47%;
+    --secondary-foreground: 222 47% 11%;
+
+    /* Muted Elements & Borders */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221 83% 53%;
+
+    /* Accent Color - High-Trust Emerald */
+    --accent: 160 84% 39%;
+    --accent-foreground: 210 40% 98%;
+
+    /* Status & Alerts */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 76% 36%;
+    --warning: 38 92% 50%;
+    --info: 199 89% 48%;
+
+    /* Geometry */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 7%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 7%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+
+    --accent: 160 60% 45%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased min-h-screen;
+    font-feature-settings: "flex" 1, "calt" 1, "cv11" 1;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* Custom Minimalist Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* B_Area Platform Helper Utilities */
+@layer components {
+
+  /* Verification & Deal Status Badges */
+  .badge-verified {
+    @apply bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 font-medium px-2.5 py-0.5 rounded-full text-xs inline-flex items-center gap-1;
+  }
+
+  .badge-pending {
+    @apply bg-amber-500/10 text-amber-600 border border-amber-500/20 font-medium px-2.5 py-0.5 rounded-full text-xs inline-flex items-center gap-1;
+  }
+
+  /* Consistent Card Elevation for Listings & Companies */
+  .b2b-card {
+    @apply bg-card border border-border rounded-lg transition-all duration-200 hover:border-primary/50 hover:shadow-md;
+  }
+
+  /* Glassmorphic UI Shell for Dashboard Panels */
+  .b2b-glass {
+    @apply bg-background/80 backdrop-blur-md border border-border/50;
+  }
+}

@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: barea-backend
+
+  # Database Configuration (PostgreSQL)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/barea_db
+    username: postgres
+    password: postgrespassword
+    driver-class-name: org.postgresql.Driver
+
+  # JPA / Hibernate settings
+  jpa:
+    hibernate:
+      ddl-auto: validate # Flyway handles schema migrations
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Database Migrations
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  # Clerk JWT Authentication Setup
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${CLERK_ISSUER_URI:https://your-clerk-frontend-api.clerk.accounts.dev}
