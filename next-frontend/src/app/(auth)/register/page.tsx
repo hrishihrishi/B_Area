@@ -83,7 +83,8 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegistrationFormValues) => {
     setIsSubmitting(true);
     try {
-      // API call payload submission to backend
+      // TODO:1 Store credentials in localstorage
+      // TODO:2 API call payload submission to backend
       console.log("B_Area Registration Data Submitted:", data);
       await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulated API delay
       alert("Registration successful!");

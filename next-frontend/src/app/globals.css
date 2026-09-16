@@ -131,3 +131,21 @@
     @apply bg-background/80 backdrop-blur-md border border-border/50;
   }
 }
+
+
+/* Full-page layout overrides for My Company page */
+.full-page-layout {
+  width: 100%;
+  min-height: 100vh;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 2rem 3rem !important;
+}
+
+.full-page-card {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  width: 100%;
+}
