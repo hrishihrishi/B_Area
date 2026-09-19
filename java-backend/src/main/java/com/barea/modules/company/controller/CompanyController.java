@@ -1,0 +1,127 @@
+/**
+ * HTTP entry point for company-related operations.
+ *
+ * This controller accepts the payloads coming from the Next.js registration and
+ * company profile screens, then translates them into the backend domain model.
+ * It exposes the CRUD endpoints used by the frontend while keeping the API
+ * contract stable across the app.
+ */
+package com.barea.modules.company.controller;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.barea.modules.company.domain.CompanyProfile;
+import com.barea.modules.company.service.CompanyProfileService;
+
+@RestController
+@CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"}, allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
+@RequestMapping("/api/company")
+public class CompanyController {
+
+    private final CompanyProfileService companyProfileService;
+
+    public CompanyController(CompanyProfileService companyProfileService) {
+        this.companyProfileService = companyProfileService;
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<?> getProfileByEmail(@RequestParam String email) {
+        return companyProfileService.getProfileByEmail(email)
+            .map(this::toResponse)
+            .map(ResponseEntity::ok)
+            .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{companyId}")
+    public ResponseEntity<?> getProfileById(@PathVariable UUID companyId) {
+        return companyProfileService.getProfileById(companyId)
+            .map(this::toResponse)
+            .map(ResponseEntity::ok)
+            .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/profile")
+    public ResponseEntity<?> createProfile(@RequestBody Map<String, Object> payload) {
+        CompanyProfile profile = mapPayloadToEntity(payload);
+        CompanyProfile saved = companyProfileService.createProfile(profile);
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(saved));
+    }
+
+    @PutMapping("/profile/{companyId}")
+    public ResponseEntity<?> updateProfile(@PathVariable UUID companyId, @RequestBody Map<String, Object> payload) {
+        CompanyProfile profile = mapPayloadToEntity(payload);
+        CompanyProfile updated = companyProfileService.updateProfile(companyId, profile);
+        return ResponseEntity.ok(toResponse(updated));
+    }
+
+    @DeleteMapping("/{companyId}")
+    public ResponseEntity<Void> deleteProfile(@PathVariable UUID companyId) {
+        companyProfileService.deleteProfile(companyId);
+        return ResponseEntity.noContent().build();
+    }
+
+    private CompanyProfile mapPayloadToEntity(Map<String, Object> payload) {
+        String email = payload.get("email") == null ? null : payload.get("email").toString();
+        String password = payload.get("password") == null ? null : payload.get("password").toString();
+        String phone = payload.get("phone") == null ? null : payload.get("phone").toString();
+        String companyName = payload.get("companyName") == null ? payload.get("title") == null ? null : payload.get("title").toString() : payload.get("companyName").toString();
+        String founder = payload.get("founder") == null ? null : payload.get("founder").toString();
+        String located = payload.get("located") == null ? payload.get("location") == null ? null : payload.get("location").toString() : payload.get("located").toString();
+        String website = payload.get("website") == null ? null : payload.get("website").toString();
+        String about = payload.get("about") == null ? null : payload.get("about").toString();
+        String industry = payload.get("industry") == null ? payload.get("specialization") == null ? null : payload.get("specialization").toString() : payload.get("industry").toString();
+        String logo = payload.get("logo") == null ? payload.get("logoUrl") == null ? null : payload.get("logoUrl").toString() : payload.get("logo").toString();
+        return CompanyProfile.builder()
+            .email(email)
+            .password(password)
+            .phone(phone)
+            .companyName(companyName)
+            .founder(founder)
+            .located(located)
+            .website(website)
+            .about(about)
+            .industry(industry)
+            .logo(logo)
+            .build();
+    }
+
+    private Map<String, Object> toResponse(CompanyProfile profile) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("companyId", profile.getCompanyId());
+        response.put("email", profile.getEmail());
+        response.put("companyName", profile.getCompanyName());
+        response.put("title", profile.getCompanyName());
+        response.put("founder", profile.getFounder());
+        response.put("located", profile.getLocated());
+        response.put("location", profile.getLocated());
+        response.put("website", profile.getWebsite());
+        response.put("about", profile.getAbout());
+        response.put("industry", profile.getIndustry());
+        response.put("specialization", profile.getIndustry());
+        response.put("phone", profile.getPhone());
+        response.put("logo", profile.getLogo());
+        response.put("logoUrl", profile.getLogo());
+        response.put("businessType", "manufacturer");
+        response.put("locatedIn", profile.getLocated());
+        response.put("phoneNumbers", profile.getPhone() == null || profile.getPhone().isBlank() ? new String[0] : new String[] { profile.getPhone() });
+        response.put("emails", profile.getEmail() == null || profile.getEmail().isBlank() ? new String[0] : new String[] { profile.getEmail() });
+        response.put("socialLinks", Map.of("linkedin", "", "twitter", ""));
+        return response;
+    }
+}

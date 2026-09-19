@@ -8,10 +8,13 @@ const baseStepOneSchema = z.object({
   confirmPassword: z.string(),
 });
 
-export const stepOneSchema = baseStepOneSchema.refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
+export const stepOneSchema = baseStepOneSchema.refine(
+  (data) => data.password === data.confirmPassword,
+  {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  },
+);
 
 // Step 2: Company Details
 export const stepTwoSchema = z.object({
@@ -30,7 +33,10 @@ export const stepThreeSchema = z.object({
 // Combined Schema for Submission
 export const registrationSchema = z.object({
   ...baseStepOneSchema.shape,
-  ...stepTwoSchema.shape,
+  // Step 2 fields are optional because the UI may skip that step.
+  businessType: z.string().optional(),
+  industry: z.string().optional(),
+  locatedIn: z.string().optional(),
   ...stepThreeSchema.shape,
 });
 

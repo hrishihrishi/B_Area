@@ -33,6 +33,9 @@ import {
   Upload,
 } from "lucide-react";
 
+import { api } from "@/lib/api-client";
+import { loadRegistrationDraft } from "@/lib/registration-storage";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +47,9 @@ interface CompanyProfile {
   about: string;
   location: string;
   specialization: string;
+  businessType?: string;
+  industry?: string;
+  locatedIn?: string;
   phoneNumbers: string[];
   emails: string[];
   website: string;
@@ -61,6 +67,9 @@ const INITIAL_DATA: CompanyProfile = {
     "Leading enterprise B2B service provider specializing in scalable cloud architecture, custom software development, and AI-driven workflow automations for industrial SMBs.",
   location: "Mumbai, Maharashtra, India",
   specialization: "Cloud Infrastructure & AI Solutions",
+  businessType: "manufacturer",
+  industry: "it_software",
+  locatedIn: "India",
   phoneNumbers: ["+91 98765 43210", "+91 22 4000 1234"],
   emails: ["contact@apexnexus.com", "sales@apexnexus.com"],
   website: "https://apexnexus.com",
@@ -87,9 +96,44 @@ export default function MyCompanyPage() {
     setIsEditing(false);
   };
 
-  const handleSave = () => {
-    setProfile(formData);
-    setIsEditing(false);
+  const handleSave = async () => {
+    // Use the current form/profile state for payload —
+    // avoid reading a stale registration draft when updating profile.
+    const payload = {
+      name: formData.title,
+      email: formData.emails[0] ?? profile.emails[0] ?? "",
+      password: "",
+      intent: "network",
+      companyName: formData.title,
+      title: formData.title,
+      about: formData.about,
+      location: formData.location,
+      located: formData.location,
+      specialization: formData.specialization,
+      industry: formData.industry ?? formData.specialization,
+      businessType: formData.businessType ?? "manufacturer",
+      locatedIn: formData.locatedIn ?? formData.location,
+      phone: formData.phoneNumbers[0] ?? "",
+      phoneNumbers: formData.phoneNumbers,
+      emails: formData.emails,
+      website: formData.website,
+      logo: formData.logoUrl,
+      logoUrl: formData.logoUrl,
+      socialLinks: formData.socialLinks,
+    };
+
+    try {
+      await api.post("/api/company/profile", payload);
+      setProfile(formData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Company profile save failed:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Unable to save company profile.",
+      );
+    }
   };
 
   const handleLogoUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -277,6 +321,50 @@ export default function MyCompanyPage() {
                 <p className="text-sm font-medium text-foreground">
                   {profile.specialization}
                 </p>
+              )}
+            </div>
+
+            {/* Business Details (optional) */}
+            <div className="md:col-span-2 space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5" /> Business Details
+              </label>
+              {isEditing ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <Input
+                    value={formData.businessType || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, businessType: e.target.value })
+                    }
+                    placeholder="Business Type (e.g. manufacturer)"
+                  />
+                  <Input
+                    value={formData.industry || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, industry: e.target.value })
+                    }
+                    placeholder="Industry (e.g. IT & Software)"
+                  />
+                  <Input
+                    value={formData.locatedIn || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, locatedIn: e.target.value })
+                    }
+                    placeholder="Country / Location"
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col md:flex-row gap-4">
+                  <p className="text-sm font-medium text-foreground">
+                    <span className="bg-purple-400">
+                      {profile.businessType}
+                    </span>
+                    of
+                    <span className="bg-yellow-400"> {profile.industry}</span>,
+                    located in
+                    <span className="bg-green-400">{profile.locatedIn}</span>
+                  </p>
+                </div>
               )}
             </div>
 

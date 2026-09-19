@@ -4,14 +4,17 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, ArrowRight, CheckCircle2, Building2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import {
   registrationSchema,
-  stepOneSchema,
-  stepTwoSchema,
-  stepThreeSchema,
   type RegistrationFormValues,
 } from "@/lib/validations/auth";
+import { api } from "@/lib/api-client";
+import {
+  clearRegistrationDraft,
+  saveRegistrationDraft,
+} from "@/lib/registration-storage";
 
 import {
   Form,
@@ -42,6 +45,7 @@ import { StepIndicator } from "@/components/modules/auth/step-indicator";
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
 
   const form = useForm<RegistrationFormValues>({
     resolver: zodResolver(registrationSchema),
@@ -50,9 +54,9 @@ export default function RegisterPage() {
       email: "",
       password: "",
       confirmPassword: "",
-      businessType: "",
-      industry: "",
-      locatedIn: "",
+      // businessType: "",
+      // industry: "",
+      // locatedIn: "",
       intent: undefined,
     },
     mode: "onChange",
@@ -69,9 +73,10 @@ export default function RegisterPage() {
         "password",
         "confirmPassword",
       ]);
-    } else if (step === 2) {
-      isValid = await form.trigger(["businessType", "industry", "locatedIn"]);
     }
+    // else if (step === 2) {
+    //   isValid = await form.trigger(["businessType", "industry", "locatedIn"]);
+    // }
 
     if (isValid) setStep((prev) => prev + 1);
   };
@@ -83,13 +88,35 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegistrationFormValues) => {
     setIsSubmitting(true);
     try {
-      // TODO:1 Store credentials in localstorage
-      // TODO:2 API call payload submission to backend
-      console.log("B_Area Registration Data Submitted:", data);
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulated API delay
+      const payload = {
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        intent: data.intent,
+        businessType: data.businessType ?? "",
+        industry: data.industry ?? "",
+        locatedIn: data.locatedIn ?? "",
+      };
+
+      saveRegistrationDraft({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        intent: data.intent,
+      });
+
+      await api.post("/company/profile", payload);
+      clearRegistrationDraft();
+
       alert("Registration successful!");
+      router.push("/my-company");
     } catch (error) {
       console.error("Registration error:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Registration failed. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -114,7 +141,7 @@ export default function RegisterPage() {
         </CardHeader>
 
         <CardContent className="px-6 pb-8 sm:px-10 sm:pb-10">
-          <StepIndicator currentStep={step} totalSteps={3} />
+          <StepIndicator currentStep={step} totalSteps={2} />
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 ">
@@ -191,7 +218,7 @@ export default function RegisterPage() {
                 </div>
               )}
 
-              {/* PAGE 2: Business Profile */}
+              {/* PAGE 2: Business Profile
               {step === 2 && (
                 <div className="space-y-4 animate-in fade-in-50 duration-200">
                   <FormField
@@ -301,10 +328,10 @@ export default function RegisterPage() {
                     )}
                   />
                 </div>
-              )}
+              )} */}
 
-              {/* PAGE 3: Platform Intent */}
-              {step === 3 && (
+              {/* PAGE 2: Platform Intent */}
+              {step === 2 && (
                 <div className="space-y-4 animate-in fade-in-50 duration-200">
                   <FormField
                     control={form.control}
@@ -355,7 +382,7 @@ export default function RegisterPage() {
                   <div />
                 )}
 
-                {step < 3 ? (
+                {step < 2 ? (
                   <Button
                     type="button"
                     onClick={handleNext}
