@@ -17,6 +17,7 @@ package com.barea.shared.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import static org.springframework.security.config.Customizer.withDefaults;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -32,33 +33,35 @@ public class SecurityConfig {
         System.out.println("[SecurityConfig] Configuring HTTP security...");
 
         http
-            // Disable CSRF — REST API with JSON body does not need CSRF tokens.
-            .csrf(AbstractHttpConfigurer::disable)
+                // Disable CSRF — REST API with JSON body does not need CSRF tokens.
+                .csrf(AbstractHttpConfigurer::disable)
 
-            .authorizeHttpRequests(auth -> auth
-                // /api/search is explicitly public — unauthenticated users can browse
-                // the marketplace. This is by design.
-                .requestMatchers("/api/search", "/api/search/**").permitAll()
+                // Delegate CORS handling to Spring MVC (@CrossOrigin annotations)
+                .cors(withDefaults())
 
-                // All other API endpoints are also open during MVP development.
-                // TODO: Lock these down with JWT auth in the V1 milestone.
-                .requestMatchers("/api/**").permitAll()
+                .authorizeHttpRequests(auth -> auth
+                        // /api/search is explicitly public — unauthenticated users can browse
+                        // the marketplace. This is by design.
+                        .requestMatchers("/api/search", "/api/search/**").permitAll()
 
-                // Spring Boot Actuator health / info endpoints
-                .requestMatchers("/actuator/**").permitAll()
+                        // All other API endpoints are also open during MVP development.
+                        // TODO: Lock these down with JWT auth in the V1 milestone.
+                        .requestMatchers("/api/**").permitAll()
 
-                // Everything else requires a valid session
-                .anyRequest().authenticated()
-            )
+                        // Spring Boot Actuator health / info endpoints
+                        .requestMatchers("/actuator/**").permitAll()
 
-            // No form-based login — frontend handles auth flows
-            .formLogin(AbstractHttpConfigurer::disable)
+                        // Everything else requires a valid session
+                        .anyRequest().authenticated())
 
-            // No HTTP Basic auth pop-up in browser
-            .httpBasic(AbstractHttpConfigurer::disable)
+                // No form-based login — frontend handles auth flows
+                .formLogin(AbstractHttpConfigurer::disable)
 
-            // No default Spring Security logout endpoint
-            .logout(AbstractHttpConfigurer::disable);
+                // No HTTP Basic auth pop-up in browser
+                .httpBasic(AbstractHttpConfigurer::disable)
+
+                // No default Spring Security logout endpoint
+                .logout(AbstractHttpConfigurer::disable);
 
         System.out.println("[SecurityConfig] Security filter chain configured.");
         return http.build();
@@ -74,4 +77,3 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
-

@@ -1,8 +1,7 @@
 /**
  * Persistence model for a company profile.
  *
- * The entity mirrors the fields used by the frontend profile form and the registration flow, 
- * while also storing timestamps so the application can track Creation and modification history in the database.
+ * Maps to the `companies` table created by V2__multi_location_and_expanded_products.sql.
  */
 package com.barea.modules.company.domain;
 
@@ -22,7 +21,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "company_info")
+@Table(name = "companies")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -64,6 +63,9 @@ public class CompanyProfile {
     @Column(name = "logo")
     private String logo;
 
+    @Column(name = "verification_status")
+    private String verificationStatus;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -75,14 +77,18 @@ public class CompanyProfile {
         if (companyId == null) {
             companyId = UUID.randomUUID();
         }
-
+        if (verificationStatus == null) {
+            verificationStatus = "UNVERIFIED";
+        }
         Instant now = Instant.now();
         createdAt = now;
         updatedAt = now;
+        System.out.println("[CompanyProfile] @PrePersist — companyId: " + companyId);
     }
 
     @PreUpdate
     public void preUpdate() {
         updatedAt = Instant.now();
+        System.out.println("[CompanyProfile] @PreUpdate — companyId: " + companyId);
     }
 }

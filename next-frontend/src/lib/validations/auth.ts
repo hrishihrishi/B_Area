@@ -6,6 +6,8 @@ const baseStepOneSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
+  companyName: z.string().min(2, "Company Name must be at least 2 characters"),
+  industry: z.string().min(1, "Please select an industry"),
 });
 
 export const stepOneSchema = baseStepOneSchema.refine(
@@ -16,15 +18,11 @@ export const stepOneSchema = baseStepOneSchema.refine(
   },
 );
 
-// Step 2: Company Details
+// Step 2: Location & Intent
 export const stepTwoSchema = z.object({
-  businessType: z.string().min(1, "Please select a business type"),
-  industry: z.string().min(1, "Please select an industry"),
-  locatedIn: z.string().min(1, "Please select a country"),
-});
-
-// Step 3: Intent / Role
-export const stepThreeSchema = z.object({
+  city: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   intent: z.enum(["network", "sell", "buy"], {
     required_error: "Please select your primary intent",
   }),
@@ -33,11 +31,12 @@ export const stepThreeSchema = z.object({
 // Combined Schema for Submission
 export const registrationSchema = z.object({
   ...baseStepOneSchema.shape,
-  // Step 2 fields are optional because the UI may skip that step.
+  city: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   businessType: z.string().optional(),
-  industry: z.string().optional(),
   locatedIn: z.string().optional(),
-  ...stepThreeSchema.shape,
+  intent: z.enum(["network", "sell", "buy"]).optional(),
 });
 
 export type RegistrationFormValues = z.infer<typeof registrationSchema>;

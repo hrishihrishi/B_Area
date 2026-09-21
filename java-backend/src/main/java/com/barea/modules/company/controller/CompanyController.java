@@ -1,16 +1,14 @@
 /**
- * HTTP entry point for company-related operations.
- *
- * This controller accepts the payloads coming from the Next.js registration and
- * company profile screens, then translates them into the backend domain model.
- * It exposes the CRUD endpoints used by the frontend while keeping the API
- * contract stable across the app.
+ * HTTP entry point for company-related operations and physical store branches.
  */
 package com.barea.modules.company.controller;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +25,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.barea.modules.company.domain.CompanyProfile;
+import com.barea.modules.company.domain.Store;
 import com.barea.modules.company.service.CompanyProfileService;
+import com.barea.modules.company.service.StoreService;
 
 @RestController
 @CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"}, allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
@@ -35,9 +35,11 @@ import com.barea.modules.company.service.CompanyProfileService;
 public class CompanyController {
 
     private final CompanyProfileService companyProfileService;
+    private final StoreService storeService;
 
-    public CompanyController(CompanyProfileService companyProfileService) {
+    public CompanyController(CompanyProfileService companyProfileService, StoreService storeService) {
         this.companyProfileService = companyProfileService;
+        this.storeService = storeService;
     }
 
     @GetMapping("/profile")
@@ -69,6 +71,25 @@ public class CompanyController {
         System.out.println("[CompanyController] POST /api/company/profile — payload keys: " + payload.keySet());
         CompanyProfile profile = mapPayloadToEntity(payload);
         CompanyProfile saved = companyProfileService.createProfile(profile);
+
+        // Optionally create an initial store branch if latitude & longitude are supplied in payload
+        if (payload.containsKey("latitude") || payload.containsKey("longitude") || payload.containsKey("city")) {
+            BigDecimal lat = parseBigDecimal(payload.get("latitude"));
+            BigDecimal lng = parseBigDecimal(payload.get("longitude"));
+            String city = payload.get("city") != null ? payload.get("city").toString() : (profile.getLocated() != null ? profile.getLocated() : "Main Branch");
+            String storeName = payload.get("storeName") != null ? payload.get("storeName").toString() : (profile.getCompanyName() + " Main Branch");
+            
+            Store initialStore = Store.builder()
+                .companyId(saved.getCompanyId())
+                .storeName(storeName)
+                .city(city)
+                .latitude(lat)
+                .longitude(lng)
+                .build();
+            storeService.createStore(initialStore);
+            System.out.println("[CompanyController] Automatically created primary store branch for new company.");
+        }
+
         System.out.println("[CompanyController] Company profile created with id: " + saved.getCompanyId());
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(saved));
     }
@@ -90,6 +111,42 @@ public class CompanyController {
         return ResponseEntity.noContent().build();
     }
 
+    // ------------------------------------------------------------- STORES / BRANCHES
+    @GetMapping("/{companyId}/stores")
+    public ResponseEntity<List<Store>> getStores(@PathVariable UUID companyId) {
+        System.out.println("[CompanyController] GET /api/company/" + companyId + "/stores");
+        List<Store> stores = storeService.getStoresByCompany(companyId);
+        return ResponseEntity.ok(stores);
+    }
+
+    @PostMapping("/{companyId}/stores")
+    public ResponseEntity<Store> createStore(@PathVariable UUID companyId, @RequestBody Map<String, Object> payload) {
+        System.out.println("[CompanyController] POST /api/company/" + companyId + "/stores — payload: " + payload);
+        String storeName = payload.get("storeName") != null ? payload.get("storeName").toString() : "Branch Store";
+        String city = payload.get("city") != null ? payload.get("city").toString() : "";
+        BigDecimal lat = parseBigDecimal(payload.get("latitude"));
+        BigDecimal lng = parseBigDecimal(payload.get("longitude"));
+
+        Store store = Store.builder()
+            .companyId(companyId)
+            .storeName(storeName)
+            .city(city)
+            .latitude(lat)
+            .longitude(lng)
+            .build();
+
+        Store saved = storeService.createStore(store);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+
+    @DeleteMapping("/stores/{storeId}")
+    public ResponseEntity<Void> deleteStore(@PathVariable UUID storeId) {
+        System.out.println("[CompanyController] DELETE /api/company/stores/" + storeId);
+        storeService.deleteStore(storeId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ------------------------------------------------------------- PRIVATE HELPERS
     private CompanyProfile mapPayloadToEntity(Map<String, Object> payload) {
         String email = payload.get("email") == null ? null : payload.get("email").toString();
         String password = payload.get("password") == null ? null : payload.get("password").toString();
@@ -101,6 +158,7 @@ public class CompanyController {
         String about = payload.get("about") == null ? null : payload.get("about").toString();
         String industry = payload.get("industry") == null ? payload.get("specialization") == null ? null : payload.get("specialization").toString() : payload.get("industry").toString();
         String logo = payload.get("logo") == null ? payload.get("logoUrl") == null ? null : payload.get("logoUrl").toString() : payload.get("logo").toString();
+        String verificationStatus = payload.get("verificationStatus") == null ? "UNVERIFIED" : payload.get("verificationStatus").toString();
         return CompanyProfile.builder()
             .email(email)
             .password(password)
@@ -112,6 +170,7 @@ public class CompanyController {
             .about(about)
             .industry(industry)
             .logo(logo)
+            .verificationStatus(verificationStatus)
             .build();
     }
 
@@ -131,11 +190,21 @@ public class CompanyController {
         response.put("phone", profile.getPhone());
         response.put("logo", profile.getLogo());
         response.put("logoUrl", profile.getLogo());
+        response.put("verificationStatus", profile.getVerificationStatus());
         response.put("businessType", "manufacturer");
         response.put("locatedIn", profile.getLocated());
         response.put("phoneNumbers", profile.getPhone() == null || profile.getPhone().isBlank() ? new String[0] : new String[] { profile.getPhone() });
         response.put("emails", profile.getEmail() == null || profile.getEmail().isBlank() ? new String[0] : new String[] { profile.getEmail() });
         response.put("socialLinks", Map.of("linkedin", "", "twitter", ""));
         return response;
+    }
+
+    private BigDecimal parseBigDecimal(Object val) {
+        if (val == null) return null;
+        try {
+            return new BigDecimal(val.toString());
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
