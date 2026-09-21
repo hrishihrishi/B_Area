@@ -87,40 +87,76 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegistrationFormValues) => {
     setIsSubmitting(true);
+    console.log("[register] Submitting registration form, step:", step);
+
     try {
       const payload = {
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        intent: data.intent,
+        name:         data.name,
+        companyName:  data.name,     // company name defaults to founder's name at registration
+        email:        data.email,
+        password:     data.password,
+        intent:       data.intent,
         businessType: data.businessType ?? "",
-        industry: data.industry ?? "",
-        locatedIn: data.locatedIn ?? "",
+        industry:     data.industry ?? "",
+        locatedIn:    data.locatedIn ?? "",
       };
 
+      console.log("[register] Sending POST /company/profile with payload:", { ...payload, password: "***" });
+
+      // Save a draft BEFORE the network call so the user's input isn't lost
+      // if the request succeeds but the page crashes before redirect.
       saveRegistrationDraft({
-        name: data.name,
-        email: data.email,
+        name:     data.name,
+        email:    data.email,
         password: data.password,
-        intent: data.intent,
+        intent:   data.intent,
       });
 
-      await api.post("/company/profile", payload);
+      // POST /company/profile — api-client will prepend the base URL
+      const response = await api.post<{ companyId: string; email: string; companyName: string }>(
+        "/company/profile",
+        payload,
+      );
+
+      console.log("[register] Registration successful. companyId:", response.companyId);
+
+      // ---- Persist session info so MyCompanyPage can fetch the profile ----
+      // We store as plain JSON in localStorage (no sensitive data — just IDs).
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          "barea_session",
+          JSON.stringify({
+            companyId:   response.companyId,
+            email:       response.email,
+            companyName: response.companyName,
+          }),
+        );
+        console.log("[register] Session saved to localStorage.");
+      }
+
+      // Draft is no longer needed once registration is confirmed
       clearRegistrationDraft();
 
-      alert("Registration successful!");
+      alert("Registration successful! Welcome to B_Area.");
       router.push("/my-company");
+
     } catch (error) {
-      console.error("Registration error:", error);
-      alert(
-        error instanceof Error
+      console.error("[register] Registration error:", error);
+
+      // Distinguish network failure from backend validation error
+      const isNetworkError = error instanceof TypeError && error.message.includes("fetch");
+      const message = isNetworkError
+        ? "Cannot reach the server. Please make sure the backend is running on port 8080."
+        : error instanceof Error
           ? error.message
-          : "Registration failed. Please try again.",
-      );
+          : "Registration failed. Please try again.";
+
+      alert(message);
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   return (
     <div className="min-h-screen w-full bg-background px-4 py-8 sm:px-6 lg:px-10 lg:py-12">

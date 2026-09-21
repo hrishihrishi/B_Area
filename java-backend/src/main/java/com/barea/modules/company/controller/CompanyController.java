@@ -42,37 +42,51 @@ public class CompanyController {
 
     @GetMapping("/profile")
     public ResponseEntity<?> getProfileByEmail(@RequestParam String email) {
+        System.out.println("[CompanyController] GET /api/company/profile?email=" + email);
         return companyProfileService.getProfileByEmail(email)
             .map(this::toResponse)
             .map(ResponseEntity::ok)
-            .orElseGet(() -> ResponseEntity.notFound().build());
+            .orElseGet(() -> {
+                System.out.println("[CompanyController] No profile found for email: " + email);
+                return ResponseEntity.notFound().build();
+            });
     }
 
     @GetMapping("/{companyId}")
     public ResponseEntity<?> getProfileById(@PathVariable UUID companyId) {
+        System.out.println("[CompanyController] GET /api/company/" + companyId);
         return companyProfileService.getProfileById(companyId)
             .map(this::toResponse)
             .map(ResponseEntity::ok)
-            .orElseGet(() -> ResponseEntity.notFound().build());
+            .orElseGet(() -> {
+                System.out.println("[CompanyController] No profile found for id: " + companyId);
+                return ResponseEntity.notFound().build();
+            });
     }
 
     @PostMapping("/profile")
     public ResponseEntity<?> createProfile(@RequestBody Map<String, Object> payload) {
+        System.out.println("[CompanyController] POST /api/company/profile — payload keys: " + payload.keySet());
         CompanyProfile profile = mapPayloadToEntity(payload);
         CompanyProfile saved = companyProfileService.createProfile(profile);
+        System.out.println("[CompanyController] Company profile created with id: " + saved.getCompanyId());
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(saved));
     }
 
     @PutMapping("/profile/{companyId}")
     public ResponseEntity<?> updateProfile(@PathVariable UUID companyId, @RequestBody Map<String, Object> payload) {
+        System.out.println("[CompanyController] PUT /api/company/profile/" + companyId + " — payload keys: " + payload.keySet());
         CompanyProfile profile = mapPayloadToEntity(payload);
         CompanyProfile updated = companyProfileService.updateProfile(companyId, profile);
+        System.out.println("[CompanyController] Company profile updated for id: " + companyId);
         return ResponseEntity.ok(toResponse(updated));
     }
 
     @DeleteMapping("/{companyId}")
     public ResponseEntity<Void> deleteProfile(@PathVariable UUID companyId) {
+        System.out.println("[CompanyController] DELETE /api/company/" + companyId);
         companyProfileService.deleteProfile(companyId);
+        System.out.println("[CompanyController] Company profile deleted for id: " + companyId);
         return ResponseEntity.noContent().build();
     }
 

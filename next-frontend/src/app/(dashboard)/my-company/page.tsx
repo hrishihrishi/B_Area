@@ -1,21 +1,25 @@
 /**
- * logo (in centre)
- * title (under logo bold)
- * about
- * location
- * specialization
- * phone numbers
- * email
- * website
- * social links
+ * MyCompanyPage — Company Profile dashboard view.
  *
- * display an edit button top-right corner, onClick turn all values into input fields and on submit make it save and display in same position.
- * when clicked on edit button for logo img it has to open file manager thingy
+ * On mount:
+ *  1. Reads `barea_session` from localStorage to get the companyId + email
+ *     stored during registration.
+ *  2. Fetches the full profile from GET /api/company/profile?email={email}.
+ *  3. Falls back to INITIAL_DATA only if the fetch fails or no session exists,
+ *     so the page is never blank.
+ *
+ * On save:
+ *  - Uses PUT /api/company/profile/{companyId} (correct HTTP method).
+ *  - Sends a blank password field so the service layer knows NOT to re-hash.
+ *
+ * Logo upload:
+ *  - For MVP, the logo is stored as a blob URL (local preview only).
+ *  - TODO Phase 2.5: wire to POST /api/company/upload-logo (multipart).
  */
 
 "use client";
 
-import React, { useState, useRef, ChangeEvent } from "react";
+import React, { useState, useRef, ChangeEvent, useEffect } from "react";
 import Image from "next/image";
 import {
   Edit2,
@@ -34,14 +38,16 @@ import {
 } from "lucide-react";
 
 import { api } from "@/lib/api-client";
-import { loadRegistrationDraft } from "@/lib/registration-storage";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
+// ------------------------------------------------------------------ Types
+
 interface CompanyProfile {
+  companyId?: string;
   logoUrl: string;
   title: string;
   about: string;
@@ -59,87 +65,201 @@ interface CompanyProfile {
   };
 }
 
-const INITIAL_DATA: CompanyProfile = {
-  logoUrl:
-    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80",
-  title: "Apex Nexus Tech Solutions Pvt Ltd",
-  about:
-    "Leading enterprise B2B service provider specializing in scalable cloud architecture, custom software development, and AI-driven workflow automations for industrial SMBs.",
-  location: "Mumbai, Maharashtra, India",
-  specialization: "Cloud Infrastructure & AI Solutions",
-  businessType: "manufacturer",
-  industry: "it_software",
-  locatedIn: "India",
-  phoneNumbers: ["+91 98765 43210", "+91 22 4000 1234"],
-  emails: ["contact@apexnexus.com", "sales@apexnexus.com"],
-  website: "https://apexnexus.com",
-  socialLinks: {
-    linkedin: "https://linkedin.com/company/apexnexus",
-    twitter: "https://x.com/apexnexus",
-  },
+// ------------------------------------------------------------------ Fallback data
+
+const EMPTY_PROFILE: CompanyProfile = {
+  logoUrl: "",
+  title: "",
+  about: "",
+  location: "",
+  specialization: "",
+  phoneNumbers: [""],
+  emails: [""],
+  website: "",
+  socialLinks: { linkedin: "", twitter: "" },
 };
 
+// ------------------------------------------------------------------ Helpers
+
+/** Reads the barea_session from localStorage. Returns null if not found. */
+function loadSession(): { companyId: string; email: string; companyName: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("barea_session");
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    console.warn("[MyCompanyPage] Failed to parse barea_session from localStorage.");
+    return null;
+  }
+}
+
+/** Maps the backend response object to our CompanyProfile interface. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapResponseToProfile(data: any): CompanyProfile {
+  return {
+    companyId:     data.companyId,
+    logoUrl:       data.logoUrl ?? data.logo ?? "",
+    title:         data.companyName ?? data.title ?? "",
+    about:         data.about ?? "",
+    location:      data.location ?? data.located ?? "",
+    specialization: data.specialization ?? data.industry ?? "",
+    businessType:  data.businessType ?? "",
+    industry:      data.industry ?? "",
+    locatedIn:     data.locatedIn ?? "",
+    phoneNumbers:  Array.isArray(data.phoneNumbers)
+                     ? data.phoneNumbers.filter(Boolean)
+                     : data.phone ? [data.phone] : [""],
+    emails:        Array.isArray(data.emails)
+                     ? data.emails.filter(Boolean)
+                     : data.email ? [data.email] : [""],
+    website:       data.website ?? "",
+    socialLinks: {
+      linkedin: data.socialLinks?.linkedin ?? "",
+      twitter:  data.socialLinks?.twitter  ?? "",
+    },
+  };
+}
+
+// ------------------------------------------------------------------ Component
+
 export default function MyCompanyPage() {
-  const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState<CompanyProfile>(INITIAL_DATA);
-  const [formData, setFormData] = useState<CompanyProfile>(INITIAL_DATA);
+  const [isEditing,  setIsEditing]  = useState(false);
+  const [isLoading,  setIsLoading]  = useState(true);
+  const [profile,    setProfile]    = useState<CompanyProfile>(EMPTY_PROFILE);
+  const [formData,   setFormData]   = useState<CompanyProfile>(EMPTY_PROFILE);
+  const [saveError,  setSaveError]  = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // ------------------------------------------------------------- Fetch on mount
+
+  useEffect(() => {
+    async function fetchProfile() {
+      console.log("[MyCompanyPage] useEffect: fetching profile on mount.");
+      const session = loadSession();
+
+      if (!session) {
+        console.warn("[MyCompanyPage] No session found. Using empty profile. Please register first.");
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("[MyCompanyPage] Session found:", session.email, "companyId:", session.companyId);
+
+      try {
+        const data = await api.get<Record<string, unknown>>(
+          `/company/profile?email=${encodeURIComponent(session.email)}`,
+        );
+        console.log("[MyCompanyPage] Profile fetched successfully:", data);
+        const mapped = mapResponseToProfile(data);
+        // Preserve companyId from session if not returned by backend
+        if (!mapped.companyId) mapped.companyId = session.companyId;
+        setProfile(mapped);
+        setFormData(mapped);
+      } catch (err) {
+        console.error("[MyCompanyPage] Failed to fetch profile:", err);
+        // On fetch failure, pre-fill at least the email/companyName from session
+        const fallback: CompanyProfile = {
+          ...EMPTY_PROFILE,
+          companyId: session.companyId,
+          title:     session.companyName ?? "",
+          emails:    [session.email],
+        };
+        setProfile(fallback);
+        setFormData(fallback);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchProfile();
+  }, []);
+
+  // ------------------------------------------------------------- Edit controls
+
   const handleEditClick = () => {
     setFormData(profile);
+    setSaveError(null);
+    setSaveSuccess(false);
     setIsEditing(true);
+    console.log("[MyCompanyPage] Entered edit mode.");
   };
 
   const handleCancel = () => {
     setFormData(profile);
     setIsEditing(false);
+    setSaveError(null);
+    console.log("[MyCompanyPage] Edit cancelled.");
   };
 
   const handleSave = async () => {
-    // Use the current form/profile state for payload —
-    // avoid reading a stale registration draft when updating profile.
+    console.log("[MyCompanyPage] handleSave() called.");
+    setSaveError(null);
+    setSaveSuccess(false);
+
+    const session = loadSession();
+    const companyId = formData.companyId ?? session?.companyId;
+
+    if (!companyId) {
+      const msg = "Cannot save: companyId is missing. Please register or log in first.";
+      console.error("[MyCompanyPage]", msg);
+      setSaveError(msg);
+      return;
+    }
+
+    // Build the update payload.
+    // We intentionally leave password blank so the service layer skips re-hashing.
     const payload = {
-      name: formData.title,
-      email: formData.emails[0] ?? profile.emails[0] ?? "",
-      password: "",
-      intent: "network",
-      companyName: formData.title,
-      title: formData.title,
-      about: formData.about,
-      location: formData.location,
-      located: formData.location,
-      specialization: formData.specialization,
-      industry: formData.industry ?? formData.specialization,
-      businessType: formData.businessType ?? "manufacturer",
-      locatedIn: formData.locatedIn ?? formData.location,
-      phone: formData.phoneNumbers[0] ?? "",
+      companyName:  formData.title,
+      email:        formData.emails[0] ?? "",
+      password:     "",            // ← blank = "keep existing hash"
+      phone:        formData.phoneNumbers[0] ?? "",
       phoneNumbers: formData.phoneNumbers,
-      emails: formData.emails,
-      website: formData.website,
-      logo: formData.logoUrl,
-      logoUrl: formData.logoUrl,
-      socialLinks: formData.socialLinks,
+      emails:       formData.emails,
+      about:        formData.about,
+      location:     formData.location,
+      located:      formData.location,
+      specialization: formData.specialization,
+      industry:     formData.industry ?? formData.specialization,
+      businessType: formData.businessType ?? "",
+      locatedIn:    formData.locatedIn ?? "",
+      website:      formData.website,
+      logo:         formData.logoUrl,
+      socialLinks:  formData.socialLinks,
     };
 
+    console.log("[MyCompanyPage] PUT /company/profile/" + companyId, payload);
+
     try {
-      await api.post("/api/company/profile", payload);
-      setProfile(formData);
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Company profile save failed:", error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Unable to save company profile.",
+      // Use PUT with the companyId in the path — this is the correct REST verb for updates.
+      const updated = await api.put<Record<string, unknown>>(
+        `/company/profile/${companyId}`,
+        payload,
       );
+      console.log("[MyCompanyPage] Profile updated successfully:", updated);
+      const mapped = mapResponseToProfile(updated);
+      mapped.companyId = companyId;
+      setProfile(mapped);
+      setFormData(mapped);
+      setIsEditing(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Save failed. Please try again.";
+      console.error("[MyCompanyPage] Save failed:", err);
+      setSaveError(message);
     }
   };
 
   const handleLogoUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // For MVP: create a local blob URL for preview.
+      // TODO: send the file to POST /api/company/upload-logo and store the returned URL.
       const imageUrl = URL.createObjectURL(file);
+      console.log("[MyCompanyPage] Logo file selected, blob URL created:", imageUrl);
       setFormData((prev) => ({ ...prev, logoUrl: imageUrl }));
     }
   };
@@ -155,21 +275,27 @@ export default function MyCompanyPage() {
   };
 
   const addArrayField = (field: "phoneNumbers" | "emails") => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: [...prev[field], ""],
-    }));
+    setFormData((prev) => ({ ...prev, [field]: [...prev[field], ""] }));
   };
 
-  const removeArrayField = (
-    field: "phoneNumbers" | "emails",
-    index: number,
-  ) => {
+  const removeArrayField = (field: "phoneNumbers" | "emails", index: number) => {
     setFormData((prev) => ({
       ...prev,
       [field]: prev[field].filter((_, i) => i !== index),
     }));
   };
+
+  // ------------------------------------------------------------- Loading state
+
+  if (isLoading) {
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground text-sm animate-pulse">Loading company profile...</p>
+      </div>
+    );
+  }
+
+  // ------------------------------------------------------------- Render
 
   return (
     <div className="w-full min-h-screen p-6 md:p-10">
@@ -191,6 +317,18 @@ export default function MyCompanyPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Success / Error feedback banners */}
+            {saveSuccess && (
+              <span className="text-xs text-emerald-600 font-medium badge-verified">
+                ✓ Saved successfully
+              </span>
+            )}
+            {saveError && (
+              <span className="text-xs text-destructive font-medium bg-destructive/10 border border-destructive/20 px-2.5 py-0.5 rounded-full">
+                ⚠ {saveError}
+              </span>
+            )}
+
             {!isEditing ? (
               <Button onClick={handleEditClick} variant="outline" size="sm">
                 <Edit2 className="w-4 h-4 mr-2" />
@@ -220,13 +358,18 @@ export default function MyCompanyPage() {
           <div className="flex flex-col items-center text-center space-y-4">
             <div className="relative group">
               <div className="w-28 h-28 rounded-xl overflow-hidden border-2 border-border shadow-inner bg-muted relative flex items-center justify-center">
-                <Image
-                  src={isEditing ? formData.logoUrl : profile.logoUrl}
-                  alt="Company Logo"
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
+                {(isEditing ? formData.logoUrl : profile.logoUrl) ? (
+                  <Image
+                    src={isEditing ? formData.logoUrl : profile.logoUrl}
+                    alt="Company Logo"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  // Placeholder when no logo is set
+                  <Building2 className="w-10 h-10 text-muted-foreground" />
+                )}
               </div>
 
               {/* Edit Logo Button Overlay */}
@@ -247,15 +390,13 @@ export default function MyCompanyPage() {
               {isEditing ? (
                 <Input
                   value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className="text-center font-bold text-xl"
                   placeholder="Company Name"
                 />
               ) : (
                 <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                  {profile.title}
+                  {profile.title || "Your Company Name"}
                 </h1>
               )}
             </div>
@@ -271,15 +412,13 @@ export default function MyCompanyPage() {
               {isEditing ? (
                 <Textarea
                   value={formData.about}
-                  onChange={(e) =>
-                    setFormData({ ...formData, about: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, about: e.target.value })}
                   rows={3}
                   placeholder="Describe your business..."
                 />
               ) : (
                 <p className="text-sm text-foreground/90 leading-relaxed bg-muted/30 p-3.5 rounded-md border border-border/50">
-                  {profile.about}
+                  {profile.about || <span className="text-muted-foreground italic">No description added yet.</span>}
                 </p>
               )}
             </div>
@@ -292,15 +431,11 @@ export default function MyCompanyPage() {
               {isEditing ? (
                 <Input
                   value={formData.location}
-                  onChange={(e) =>
-                    setFormData({ ...formData, location: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   placeholder="City, State, Country"
                 />
               ) : (
-                <p className="text-sm font-medium text-foreground">
-                  {profile.location}
-                </p>
+                <p className="text-sm font-medium text-foreground">{profile.location || "—"}</p>
               )}
             </div>
 
@@ -312,19 +447,15 @@ export default function MyCompanyPage() {
               {isEditing ? (
                 <Input
                   value={formData.specialization}
-                  onChange={(e) =>
-                    setFormData({ ...formData, specialization: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
                   placeholder="Core Business Domain"
                 />
               ) : (
-                <p className="text-sm font-medium text-foreground">
-                  {profile.specialization}
-                </p>
+                <p className="text-sm font-medium text-foreground">{profile.specialization || "—"}</p>
               )}
             </div>
 
-            {/* Business Details (optional) */}
+            {/* Business Details */}
             <div className="md:col-span-2 space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <Briefcase className="w-3.5 h-3.5" /> Business Details
@@ -333,36 +464,28 @@ export default function MyCompanyPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <Input
                     value={formData.businessType || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, businessType: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
                     placeholder="Business Type (e.g. manufacturer)"
                   />
                   <Input
                     value={formData.industry || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, industry: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
                     placeholder="Industry (e.g. IT & Software)"
                   />
                   <Input
                     value={formData.locatedIn || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, locatedIn: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, locatedIn: e.target.value })}
                     placeholder="Country / Location"
                   />
                 </div>
               ) : (
                 <div className="flex flex-col md:flex-row gap-4">
                   <p className="text-sm font-medium text-foreground">
-                    <span className="bg-purple-400">
-                      {profile.businessType}
-                    </span>
-                    of
-                    <span className="bg-yellow-400"> {profile.industry}</span>,
-                    located in
-                    <span className="bg-green-400">{profile.locatedIn}</span>
+                    <span className="bg-purple-400/20 text-purple-700 rounded px-1">{profile.businessType || "—"}</span>
+                    {" "}of{" "}
+                    <span className="bg-yellow-400/20 text-yellow-700 rounded px-1">{profile.industry || "—"}</span>
+                    , located in{" "}
+                    <span className="bg-green-400/20 text-green-700 rounded px-1">{profile.locatedIn || "—"}</span>
                   </p>
                 </div>
               )}
@@ -379,43 +502,30 @@ export default function MyCompanyPage() {
                     <div key={idx} className="flex gap-2">
                       <Input
                         value={phone}
-                        onChange={(e) =>
-                          handleArrayChange("phoneNumbers", idx, e.target.value)
-                        }
+                        onChange={(e) => handleArrayChange("phoneNumbers", idx, e.target.value)}
                         placeholder="Phone number"
                       />
                       {formData.phoneNumbers.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeArrayField("phoneNumbers", idx)}
-                        >
+                        <Button type="button" variant="ghost" size="icon"
+                          onClick={() => removeArrayField("phoneNumbers", idx)}>
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       )}
                     </div>
                   ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addArrayField("phoneNumbers")}
-                    className="w-full mt-1"
-                  >
+                  <Button type="button" variant="outline" size="sm"
+                    onClick={() => addArrayField("phoneNumbers")} className="w-full mt-1">
                     <Plus className="w-3.5 h-3.5 mr-1" /> Add Phone
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {profile.phoneNumbers.map((phone, idx) => (
-                    <p
-                      key={idx}
-                      className="text-sm font-medium text-foreground"
-                    >
-                      {phone}
-                    </p>
+                  {profile.phoneNumbers.filter(Boolean).map((phone, idx) => (
+                    <p key={idx} className="text-sm font-medium text-foreground">{phone}</p>
                   ))}
+                  {profile.phoneNumbers.filter(Boolean).length === 0 && (
+                    <p className="text-sm text-muted-foreground italic">No phone numbers added.</p>
+                  )}
                 </div>
               )}
             </div>
@@ -431,41 +541,27 @@ export default function MyCompanyPage() {
                     <div key={idx} className="flex gap-2">
                       <Input
                         value={email}
-                        onChange={(e) =>
-                          handleArrayChange("emails", idx, e.target.value)
-                        }
+                        onChange={(e) => handleArrayChange("emails", idx, e.target.value)}
                         placeholder="Email address"
                       />
                       {formData.emails.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeArrayField("emails", idx)}
-                        >
+                        <Button type="button" variant="ghost" size="icon"
+                          onClick={() => removeArrayField("emails", idx)}>
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       )}
                     </div>
                   ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addArrayField("emails")}
-                    className="w-full mt-1"
-                  >
+                  <Button type="button" variant="outline" size="sm"
+                    onClick={() => addArrayField("emails")} className="w-full mt-1">
                     <Plus className="w-3.5 h-3.5 mr-1" /> Add Email
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {profile.emails.map((email, idx) => (
-                    <a
-                      key={idx}
-                      href={`mailto:${email}`}
-                      className="block text-sm font-medium text-primary hover:underline"
-                    >
+                  {profile.emails.filter(Boolean).map((email, idx) => (
+                    <a key={idx} href={`mailto:${email}`}
+                      className="block text-sm font-medium text-primary hover:underline">
                       {email}
                     </a>
                   ))}
@@ -481,19 +577,13 @@ export default function MyCompanyPage() {
               {isEditing ? (
                 <Input
                   value={formData.website}
-                  onChange={(e) =>
-                    setFormData({ ...formData, website: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                   placeholder="https://company.com"
                 />
               ) : (
-                <a
-                  href={profile.website}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm font-medium text-primary hover:underline block truncate"
-                >
-                  {profile.website}
+                <a href={profile.website} target="_blank" rel="noreferrer"
+                  className="text-sm font-medium text-primary hover:underline block truncate">
+                  {profile.website || "—"}
                 </a>
               )}
             </div>
@@ -507,49 +597,36 @@ export default function MyCompanyPage() {
                 <div className="space-y-2">
                   <Input
                     value={formData.socialLinks.linkedin}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        socialLinks: {
-                          ...formData.socialLinks,
-                          linkedin: e.target.value,
-                        },
-                      })
-                    }
+                    onChange={(e) => setFormData({
+                      ...formData, socialLinks: { ...formData.socialLinks, linkedin: e.target.value },
+                    })}
                     placeholder="LinkedIn URL"
                   />
                   <Input
                     value={formData.socialLinks.twitter}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        socialLinks: {
-                          ...formData.socialLinks,
-                          twitter: e.target.value,
-                        },
-                      })
-                    }
+                    onChange={(e) => setFormData({
+                      ...formData, socialLinks: { ...formData.socialLinks, twitter: e.target.value },
+                    })}
                     placeholder="Twitter/X URL"
                   />
                 </div>
               ) : (
                 <div className="flex flex-col gap-1">
-                  <a
-                    href={profile.socialLinks.linkedin}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm font-medium text-primary hover:underline truncate"
-                  >
-                    LinkedIn: {profile.socialLinks.linkedin}
-                  </a>
-                  <a
-                    href={profile.socialLinks.twitter}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm font-medium text-primary hover:underline truncate"
-                  >
-                    Twitter/X: {profile.socialLinks.twitter}
-                  </a>
+                  {profile.socialLinks.linkedin && (
+                    <a href={profile.socialLinks.linkedin} target="_blank" rel="noreferrer"
+                      className="text-sm font-medium text-primary hover:underline truncate">
+                      LinkedIn: {profile.socialLinks.linkedin}
+                    </a>
+                  )}
+                  {profile.socialLinks.twitter && (
+                    <a href={profile.socialLinks.twitter} target="_blank" rel="noreferrer"
+                      className="text-sm font-medium text-primary hover:underline truncate">
+                      Twitter/X: {profile.socialLinks.twitter}
+                    </a>
+                  )}
+                  {!profile.socialLinks.linkedin && !profile.socialLinks.twitter && (
+                    <p className="text-sm text-muted-foreground italic">No social profiles added.</p>
+                  )}
                 </div>
               )}
             </div>
