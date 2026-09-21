@@ -5,12 +5,19 @@ Setup next-frontend
 Added registration flow with UI
 Setup java-backend
 setup docker postgresql
+Full company profile management
+Search functionality
+
 
 
 
 ## Features :
-List products/services : 
-Search
+Plan schema for products or services
+Product page at /product/[id]/page.tsx
+Metadata and SEO
+Geolocation and others
+Personalized store front
+
 
 
 

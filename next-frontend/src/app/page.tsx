@@ -1,3 +1,6 @@
+
+// LANDING PAGE FOR NEW USERS
+
 import Link from "next/link";
 import { 
   ArrowRight, 
