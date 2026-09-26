@@ -40,19 +40,7 @@ public class SecurityConfig {
                 .cors(withDefaults())
 
                 .authorizeHttpRequests(auth -> auth
-                        // /api/search is explicitly public — unauthenticated users can browse
-                        // the marketplace. This is by design.
-                        .requestMatchers("/api/search", "/api/search/**").permitAll()
-
-                        // All other API endpoints are also open during MVP development.
-                        // TODO: Lock these down with JWT auth in the V1 milestone.
-                        .requestMatchers("/api/**").permitAll()
-
-                        // Spring Boot Actuator health / info endpoints
-                        .requestMatchers("/actuator/**").permitAll()
-
-                        // Everything else requires a valid session
-                        .anyRequest().authenticated())
+                        .anyRequest().permitAll())
 
                 // No form-based login — frontend handles auth flows
                 .formLogin(AbstractHttpConfigurer::disable)

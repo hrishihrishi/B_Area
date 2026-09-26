@@ -22,7 +22,7 @@ interface CompanyInfo {
 }
 
 const DEFAULT_TAGS: NavTag[] = [
-  { name: "Electronics", column: "electronics" },
+  { name: "Home", column: "home" },
   { name: "Textiles & Garments", column: "textiles" },
   { name: "Industrial Machinery", column: "machinery" },
   { name: "Automotive Parts", column: "automotive" },
@@ -127,7 +127,7 @@ export default function Navbar({ tags = DEFAULT_TAGS }: NavbarProps) {
           
           {/* Left Corner: Platform Logo */}
           <div className="flex items-center flex-shrink-0">
-            <Link href="/" className="flex items-center gap-2 group">
+            <Link href="/home" className="flex items-center gap-2 group">
               <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl shadow-sm transition-transform group-hover:scale-105">
                 B
               </div>
@@ -142,7 +142,7 @@ export default function Navbar({ tags = DEFAULT_TAGS }: NavbarProps) {
             {tags.map((tag, idx) => (
               <Link
                 key={`${tag.column}-${idx}`}
-                href={`/category/${tag.column}`}
+                href={`/${tag.column}`}
                 className="px-3 py-1.5 text-xs font-medium text-muted-foreground rounded-md transition-all duration-150 hover:text-foreground hover:bg-muted whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 {tag.name}

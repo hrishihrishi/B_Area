@@ -67,9 +67,11 @@ public class Product {
     @Column(name = "tags")
     private String[] tags;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(name = "specifications", columnDefinition = "jsonb")
     private String specifications;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(name = "pricing_tiers", columnDefinition = "jsonb")
     private String pricingTiers;
 

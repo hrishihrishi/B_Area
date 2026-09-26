@@ -1,6 +1,6 @@
 /**
  * Search service that combines full-text search (tsvector @@) and fuzzy
- * trigram similarity (pg_trgm %) across the company_info and products tables.
+ * trigram similarity (pg_trgm %) across the companies and products tables.
  *
  * Query strategy:
  *  1. Products: use the generated `search_vector` TSVECTOR column (GIN indexed)
@@ -89,7 +89,7 @@ public class SearchService {
                     COALESCE(c.located, 'Location unknown')      AS meta,
                     c.logo                                       AS logo_url,
                     similarity(c.company_name, :rawQuery)        AS score
-                FROM company_info c
+                FROM companies c
                 WHERE
                     similarity(c.company_name, :rawQuery) > 0.1
                     OR c.company_name ILIKE :likeQuery

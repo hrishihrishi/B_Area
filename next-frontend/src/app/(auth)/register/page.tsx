@@ -145,7 +145,7 @@ export default function RegisterPage() {
         name:     data.name,
         email:    data.email,
         password: data.password,
-        intent:   "sell",
+        intent:   data.intent ?? "sell",
       });
 
       const response = await api.post<{ companyId: string; email: string; companyName: string }>(
@@ -162,6 +162,11 @@ export default function RegisterPage() {
             companyId:   response.companyId,
             email:       response.email,
             companyName: response.companyName,
+            intent:      data.intent,
+            industry:    data.industry,
+            city:        data.city,
+            latitude:    data.latitude,
+            longitude:   data.longitude,
           }),
         );
         console.log("[RegisterPage] Session stored in localStorage:", response.companyId);
@@ -169,7 +174,7 @@ export default function RegisterPage() {
 
       clearRegistrationDraft();
       alert("Registration successful! Primary location store created.");
-      router.push("/my-company");
+      router.push("/home");
 
     } catch (error) {
       console.error("[RegisterPage] Registration failed:", error);
