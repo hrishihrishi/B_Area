@@ -10,7 +10,7 @@ export function StepIndicator({ currentStep, totalSteps }: StepIndicatorProps) {
 
   const steps = [
     { title: "Account Info", description: "Personal Credentials" },
-    { title: "Company Details", description: "Business Profile" },
+    // { title: "Company Details", description: "Business Profile" },
     { title: "Platform Intent", description: "Your Objectives" },
   ];
 
@@ -25,7 +25,7 @@ export function StepIndicator({ currentStep, totalSteps }: StepIndicatorProps) {
         </span>
       </div>
       <Progress value={progressPercentage} className="h-2" />
-      <div className="grid grid-cols-3 gap-2 text-center text-xs text-muted-foreground pt-1">
+      <div className="grid grid-cols-2 gap-2 text-center text-xs text-muted-foreground pt-1">
         {steps.map((step, idx) => (
           <div
             key={idx}

@@ -49,3 +49,7 @@ CREATE INDEX idx_products_search_vector ON products USING GIN (search_vector);
 CREATE INDEX idx_products_name_trgm ON products USING GIN (product_name gin_trgm_ops);
 CREATE INDEX idx_company_name_trgm ON company_info USING GIN (company_name gin_trgm_ops);
 CREATE INDEX idx_products_pricing ON products (pricing);
+
+
+
+
