@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/lib/api-client";
 
 export interface NavTag {
@@ -23,9 +23,8 @@ interface CompanyInfo {
 
 const DEFAULT_TAGS: NavTag[] = [
   { name: "Home", column: "home" },
-  { name: "Textiles & Garments", column: "textiles" },
-  { name: "Industrial Machinery", column: "machinery" },
-  { name: "Automotive Parts", column: "automotive" },
+  { name: "My Products", column: "my-company/products"},
+  { name: "My Company", column: "my-company" },
 ];
 
 function loadSession(): { companyId: string; email: string; companyName: string } | null {
@@ -41,6 +40,7 @@ function loadSession(): { companyId: string; email: string; companyName: string 
 
 export default function Navbar({ tags = DEFAULT_TAGS }: NavbarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -104,6 +104,11 @@ export default function Navbar({ tags = DEFAULT_TAGS }: NavbarProps) {
   const toggleDropdown = () => setIsDropdownOpen((prev) => !prev);
   const toggleMobileMenu = () => setIsMobileMenuOpen((prev) => !prev);
 
+  // Do not render global Navbar on the landing page
+  if (pathname === "/") {
+    return null;
+  }
+
   // If check complete and user is not logged in, render hidden navbar header
   if (isLoggedIn === false) {
     return (
@@ -132,7 +137,7 @@ export default function Navbar({ tags = DEFAULT_TAGS }: NavbarProps) {
                 B
               </div>
               <span className="text-lg font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">
-                B_Area
+                B-Area
               </span>
             </Link>
           </div>
@@ -143,7 +148,7 @@ export default function Navbar({ tags = DEFAULT_TAGS }: NavbarProps) {
               <Link
                 key={`${tag.column}-${idx}`}
                 href={`/${tag.column}`}
-                className="px-3 py-1.5 text-xs font-medium text-muted-foreground rounded-md transition-all duration-150 hover:text-foreground hover:bg-muted whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-ring"
+                className="px-3 py-1.5 font-medium text-muted-foreground rounded-md transition-all duration-150 hover:text-foreground hover:bg-muted whitespace-nowrap focus:outline-none focus:ring-ring"
               >
                 {tag.name}
               </Link>
@@ -296,7 +301,7 @@ export default function Navbar({ tags = DEFAULT_TAGS }: NavbarProps) {
             {tags.map((tag, idx) => (
               <Link
                 key={`mobile-${tag.column}-${idx}`}
-                href={`/category/${tag.column}`}
+                href={`/${tag.column}`}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="px-3 py-2 rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors"
               >

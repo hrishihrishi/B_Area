@@ -638,16 +638,16 @@ export default function ProductDetailPage() {
               <h3 className="font-semibold text-sm text-foreground">Supplier Desk</h3>
               <ul className="space-y-3 text-xs text-muted-foreground">
                 <li className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-primary shrink-0" />
-                  <span className="font-medium text-foreground">{contactInfo.email}</span>
+                  <Mail className="w-4 h-4 text-xs shrink-0" />
+                  <span className="font-medium text-lg underline text-foreground">{contactInfo.email}</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-primary shrink-0" />
-                  <span className="font-medium text-foreground">{contactInfo.phone}</span>
+                  <Phone className="w-4 h-4 text-xs shrink-0" />
+                  <span className="font-medium text-lg underline text-foreground">{contactInfo.phone}</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span>Response Time: <strong className="text-foreground">{contactInfo.responseTime}</strong></span>
+                  <span className="text-lg">Response Time: <strong className="text-foreground">{contactInfo.responseTime}</strong></span>
                 </li>
               </ul>
             </div>

@@ -19,9 +19,9 @@ Full company profile management
 Search functionality
 Product page at /[company_id]/[product_id]/page.tsx
 Company page at /[company_id]/page.tsx
+/login/page.tsx
 
 ## Features :
-/login/page.tsx
 Plan schema for products or services
 Metadata and SEO
 Geolocation and others
