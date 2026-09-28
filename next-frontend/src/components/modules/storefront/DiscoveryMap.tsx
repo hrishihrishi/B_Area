@@ -54,7 +54,7 @@ export function DiscoveryMap({
   const userPos = projectToPercent(userLat, userLng, bounds);
 
   return (
-    <div className="b2b-card overflow-hidden flex flex-col h-full min-h-[320px]">
+    <div className="b2b-card overflow-hidden flex flex-col h-44 border border-border">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/30">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <MapPin className="w-4 h-4 text-primary" />

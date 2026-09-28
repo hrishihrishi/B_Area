@@ -7,12 +7,16 @@ import {
   Search,
   Loader2,
   X,
-  RefreshCw,
-  Target,
-  Trash2,
-  Pencil,
-  Sparkles,
   Briefcase,
+  MapPin,
+  Target,
+  BookmarkCheck,
+  Bookmark,
+  ChevronRight,
+  Package,
+  Sparkles,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 import { api } from "@/lib/api-client";
@@ -83,11 +87,11 @@ const INDUSTRY_SEED: Record<string, string> = {
 const INTENT_COPY: Record<UserIntent, { headline: string; sub: string }> = {
   buy: {
     headline: "Procurement matches near you",
-    sub: "Discover suppliers ranked from closest to farthest — save leads to track conversions.",
+    sub: "Suppliers ranked closest → farthest. Save leads to track conversion.",
   },
   sell: {
     headline: "Buyers browsing your category",
-    sub: "See nearby demand and keep your catalog sharp from your personalized storefront.",
+    sub: "See nearby demand and keep your catalog sharp.",
   },
   network: {
     headline: "Partners in your radius",
@@ -97,15 +101,13 @@ const INTENT_COPY: Record<UserIntent, { headline: string; sub: string }> = {
 
 function parseTags(raw?: string): string[] {
   if (!raw) return [];
-  return raw
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean);
+  return raw.split(",").map((t) => t.trim()).filter(Boolean);
 }
 
 function nearbyToCard(item: NearbyItem): ListingCardData {
   return {
     id: item.productId,
+    companyId: item.companyId,
     title: item.productName,
     companyName: item.companyName,
     category: item.category,
@@ -130,6 +132,21 @@ function searchToCard(result: SearchResult): ListingCardData {
     city: result.resultType === "company" ? result.meta : undefined,
     score: result.score,
   };
+}
+
+/** Skeleton card shown while loading */
+function SkeletonCard() {
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden animate-pulse">
+      <div className="h-36 bg-muted" />
+      <div className="p-4 space-y-2.5">
+        <div className="h-4 bg-muted rounded w-3/4" />
+        <div className="h-3 bg-muted rounded w-1/2" />
+        <div className="h-3 bg-muted rounded w-1/3" />
+        <div className="h-8 bg-muted rounded mt-3" />
+      </div>
+    </div>
+  );
 }
 
 export default function StorefrontClient() {
@@ -159,6 +176,7 @@ export default function StorefrontClient() {
   const [editPricing, setEditPricing] = useState("");
 
   const [savedLeads, setSavedLeads] = useState<SavedLead[]>([]);
+  const [sidebarTab, setSidebarTab] = useState<"shortlist" | "catalog">("shortlist");
 
   const refreshSaved = useCallback(() => {
     setSavedLeads(listSavedLeads());
@@ -218,8 +236,7 @@ export default function StorefrontClient() {
         const industry = (profile.industry as string) ?? baseSession.industry;
         const nextSession: BareaSession = {
           ...baseSession,
-          companyName:
-            (profile.companyName as string) ?? baseSession.companyName,
+          companyName: (profile.companyName as string) ?? baseSession.companyName,
           industry,
           city: (profile.located as string) ?? store?.city ?? baseSession.city,
           latitude: Number(lat),
@@ -277,9 +294,7 @@ export default function StorefrontClient() {
   const fetchOwnProducts = useCallback(async () => {
     if (!session?.companyId) return;
     try {
-      const data = await api.get<OwnProduct[]>(
-        `/products?companyId=${session.companyId}`,
-      );
+      const data = await api.get<OwnProduct[]>(`/products?companyId=${session.companyId}`);
       setOwnProducts(data ?? []);
     } catch {
       setOwnProducts([]);
@@ -328,9 +343,7 @@ export default function StorefrontClient() {
   }, [mode, query, searchItems, nearbyItems]);
 
   const mapListings: MapListing[] = useMemo(() => {
-    if (mode === "search") {
-      return [];
-    }
+    if (mode === "search") return [];
     return nearbyItems
       .filter((i) => i.storeLatitude != null && i.storeLongitude != null)
       .map((i) => ({
@@ -432,62 +445,63 @@ export default function StorefrontClient() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* ── Hero / Search Header ── */}
       <section className="border-b border-border bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-                Welcome back, {session.companyName}
-              </h1>
-              {/* <p className="text-muted-foreground mt-2 max-w-2xl">{copy.headline}</p> */}
-              <p className="text-sm text-muted-foreground/80 mt-1">{copy.sub}</p>
+
+          {/* Unified Search Bar with location pill */}
+          <div className="relative max-w-7xl flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground pointer-events-none" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search products, companies, categories..."
+                className="pl-14 pr-12 h-16 bg-card border-2 border-border focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 rounded-2xl shadow-md hover:shadow-lg transition-all text-base sm:text-lg"
+                id="home-search-input"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => { setQuery(""); fetchNearby(); }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted/50 transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={handleDetectLocation} disabled={locating}>
-                {locating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Target className="w-4 h-4 mr-1" />}
-                Use my location
-              </Button>
-              <Button type="button" variant="secondary" size="sm" onClick={() => fetchNearby()}>
-                <RefreshCw className="w-4 h-4 mr-1" />
-                Refresh nearby
-              </Button>
-              <Button asChild size="sm">
-                <Link href="/my-company/products">Full catalog CRUD</Link>
-              </Button>
-            </div>
+
+            {/* Location pill integrated into search row */}
+            <button
+              type="button"
+              onClick={handleDetectLocation}
+              disabled={locating}
+              className="flex items-center gap-2 h-16 px-5 rounded-2xl border-2 border-border bg-card hover:border-primary/50 hover:bg-primary/5 text-sm sm:text-base font-semibold text-foreground transition-all shrink-0 shadow-md disabled:opacity-60"
+              title="Use my current location"
+            >
+              {locating ? (
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              ) : (
+                <Target className="w-5 h-5 text-primary" />
+              )}
+              <span className="hidden sm:inline">
+                {locating ? "Locating..." : "Use Location"}
+              </span>
+            </button>
           </div>
 
-          <div className="mt-8 relative max-w-3xl">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Fuzzy search products & companies..."
-              className="pl-12 pr-10 h-12 bg-card border-border rounded-xl shadow-sm"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery("");
-                  fetchNearby();
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label="Clear"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-          <p className="pl-2 text-xs text-muted-foreground mt-2">
+          <p className="pl-1 text-xs text-muted-foreground mt-2">
             {mode === "search" && query.trim().length >= 2
-              ? "Showing fuzzy search results by relevance."
-              : "Showing location-ranked listings (closest → farthest)."}
+              ? `Showing fuzzy search results for "${query.trim()}"`
+              : "Showing location-ranked listings · closest → farthest"}
           </p>
         </div>
       </section>
 
+      {/* ── Main Content Grid ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 xl:grid-cols-12 gap-6">
+        {/* ── Feed Column ── */}
         <div className="xl:col-span-7 space-y-4">
           {error && (
             <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
@@ -495,15 +509,37 @@ export default function StorefrontClient() {
             </div>
           )}
 
+          {/* Results header */}
+          {!loading && displayCards.length > 0 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-foreground">
+                {displayCards.length} listings found
+              </p>
+              <Link
+                href="/my-company/products"
+                className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+              >
+                <Package className="w-3.5 h-3.5" />
+                Manage Catalog
+                <ChevronRight className="w-3 h-3" />
+              </Link>
+            </div>
+          )}
+
+          {/* Skeleton or real grid */}
           {loading ? (
-            <div className="flex items-center justify-center py-20 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin mr-2 text-primary" />
-              Loading marketplace feed...
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
             </div>
           ) : displayCards.length === 0 ? (
-            <div className="b2b-card p-10 text-center text-muted-foreground">
-              <Briefcase className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              No listings yet. Try another keyword or widen your search radius.
+            <div className="b2b-card p-12 text-center text-muted-foreground flex flex-col items-center gap-3">
+              <Briefcase className="w-10 h-10 opacity-25" />
+              <p className="font-medium">No listings found</p>
+              <p className="text-xs max-w-xs">
+                Try a different keyword or click &ldquo;Use Location&rdquo; to discover suppliers near you.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -531,7 +567,9 @@ export default function StorefrontClient() {
           )}
         </div>
 
+        {/* ── Right Sidebar ── */}
         <div className="xl:col-span-5 space-y-6">
+          {/* Map */}
           {mode === "nearby" && (
             <DiscoveryMap
               userLat={userLat}
@@ -542,118 +580,169 @@ export default function StorefrontClient() {
             />
           )}
 
-          <section className="b2b-card p-4">
-            <h2 className="text-sm font-semibold text-foreground mb-3">Saved leads ({savedLeads.length})</h2>
-            {savedLeads.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Save listings to track conversion opportunities.</p>
-            ) : (
-              <ul className="space-y-3 max-h-64 overflow-y-auto">
-                {savedLeads.map((lead) => (
-                  <li key={lead.id} className="border border-border rounded-lg p-3 bg-muted/20">
-                    <div className="flex justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-medium text-foreground line-clamp-1">{lead.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{lead.companyName} · {lead.category}</p>
-                      </div>
-                      <button
-                        type="button"
-                        className="text-destructive text-xs hover:underline shrink-0"
-                        onClick={() => {
-                          removeSavedLead(lead.id);
-                          refreshSaved();
-                        }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <Textarea
-                      className="mt-2 text-xs min-h-[56px]"
-                      placeholder="Conversion notes..."
-                      defaultValue={lead.notes}
-                      onBlur={(e) => {
-                        updateSavedLeadNotes(lead.id, e.target.value);
-                        refreshSaved();
-                      }}
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="b2b-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-foreground">Your catalog</h2>
-              <Link href="/my-company/products" className="text-xs text-primary hover:underline">
-                Open manager
-              </Link>
+          {/* Sidebar tab switcher */}
+          <div className="b2b-card overflow-hidden">
+            <div className="flex border-b border-border">
+              <button
+                type="button"
+                onClick={() => setSidebarTab("shortlist")}
+                className={`flex-1 px-4 py-3 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+                  sidebarTab === "shortlist"
+                    ? "text-primary border-b-2 border-primary bg-primary/5"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <BookmarkCheck className="w-3.5 h-3.5" />
+                Shortlisted Vendors ({savedLeads.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidebarTab("catalog")}
+                className={`flex-1 px-4 py-3 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+                  sidebarTab === "catalog"
+                    ? "text-primary border-b-2 border-primary bg-primary/5"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Your Catalog ({ownProducts.length})
+              </button>
             </div>
-            {ownProducts.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No products yet. Add items from Manage Products.</p>
-            ) : (
-              <ul className="space-y-2">
-                {ownProducts.slice(0, 6).map((p) => (
-                  <li
-                    key={p.productId}
-                    className="flex items-center justify-between gap-2 border border-border/70 rounded-md px-3 py-2 text-sm"
-                  >
-                    {editingId === p.productId ? (
-                      <div className="flex-1 space-y-2">
-                        <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8 text-xs" />
-                        <div className="flex gap-2">
-                          <Input
-                            value={editCategory}
-                            onChange={(e) => setEditCategory(e.target.value)}
-                            className="h-8 text-xs"
-                          />
-                          <Input
-                            value={editPricing}
-                            onChange={(e) => setEditPricing(e.target.value)}
-                            className="h-8 text-xs"
-                          />
+
+            {/* Shortlist panel */}
+            {sidebarTab === "shortlist" && (
+              <div className="p-4">
+                {savedLeads.length === 0 ? (
+                  <div className="py-8 text-center flex flex-col items-center gap-2 text-muted-foreground">
+                    <Bookmark className="w-8 h-8 opacity-30" />
+                    <p className="text-xs">No saved leads yet.</p>
+                    <p className="text-[11px]">Save listings from the feed to track conversion opportunities.</p>
+                  </div>
+                ) : (
+                  <ul className="space-y-3 max-h-64 overflow-y-auto">
+                    {savedLeads.map((lead) => (
+                      <li key={lead.id} className="border border-border rounded-lg p-3 bg-muted/20 space-y-2">
+                        <div className="flex justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground line-clamp-1">{lead.name}</p>
+                            <p className="text-[11px] text-muted-foreground">{lead.companyName} · {lead.category}</p>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => router.push(`/${lead.id}`)}
+                              className="text-[10px] px-2 py-1 rounded bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 font-medium"
+                            >
+                              Contact
+                            </button>
+                            <button
+                              type="button"
+                              className="text-[10px] px-2 py-1 rounded hover:bg-destructive/10 text-destructive border border-destructive/20"
+                              onClick={() => { removeSavedLead(lead.id); refreshSaved(); }}
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" className="h-7 text-xs" onClick={saveProductEdit}>
-                            Save
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingId(null)}>
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">{p.productName}</p>
-                          <p className="text-[11px] text-muted-foreground truncate">
-                            {p.category} {p.pricing ? `· ${p.pricing}` : ""}
-                          </p>
-                        </div>
-                        <div className="flex gap-1 shrink-0">
-                          <button
-                            type="button"
-                            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground"
-                            onClick={() => startEditProduct(p)}
-                            aria-label="Edit"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive"
-                            onClick={() => deleteProduct(p.productId)}
-                            aria-label="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
+                        <Textarea
+                          className="text-xs min-h-[44px]"
+                          placeholder="Conversion notes..."
+                          defaultValue={lead.notes}
+                          onBlur={(e) => { updateSavedLeadNotes(lead.id, e.target.value); refreshSaved(); }}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
-          </section>
+
+            {/* Catalog panel */}
+            {sidebarTab === "catalog" && (
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-muted-foreground">Your active product listings</p>
+                  <Link href="/my-company/products" className="text-xs text-primary hover:underline font-medium">
+                    + Add Product
+                  </Link>
+                </div>
+                {ownProducts.length === 0 ? (
+                  <div className="py-6 text-center flex flex-col items-center gap-2 text-muted-foreground">
+                    <Package className="w-8 h-8 opacity-30" />
+                    <p className="text-xs">No products yet.</p>
+                    <Link href="/my-company/products" className="text-xs text-primary hover:underline">
+                      Add your first product →
+                    </Link>
+                  </div>
+                ) : (
+                  <ul className="space-y-2 max-h-72 overflow-y-auto">
+                    {ownProducts.slice(0, 8).map((p) => (
+                      <li
+                        key={p.productId}
+                        className="flex items-center justify-between gap-2 border border-border/70 rounded-md px-3 py-2 text-sm"
+                      >
+                        {editingId === p.productId ? (
+                          <div className="flex-1 space-y-2">
+                            <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8 text-xs" />
+                            <div className="flex gap-2">
+                              <Input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="h-8 text-xs" />
+                              <Input value={editPricing} onChange={(e) => setEditPricing(e.target.value)} className="h-8 text-xs" />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" className="h-7 text-xs" onClick={saveProductEdit}>Save</Button>
+                              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingId(null)}>Cancel</Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="min-w-0">
+                              <p className="font-medium truncate text-xs">{p.productName}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                {p.category}{p.pricing ? ` · ${p.pricing}` : ""}
+                              </p>
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              <button
+                                type="button"
+                                className="p-1.5 rounded-md hover:bg-muted text-muted-foreground"
+                                onClick={() => startEditProduct(p)}
+                                aria-label="Edit"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive"
+                                onClick={() => deleteProduct(p.productId)}
+                                aria-label="Delete"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Quick RFQ Guide */}
+          <div className="b2b-card p-4 bg-gradient-to-br from-primary/5 to-accent/5">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                <MapPin className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-xs font-semibold text-foreground">Location-Ranked Discovery</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                  Listings are ranked by proximity from your registered store coordinates. Click &ldquo;Use Location&rdquo; to update your position.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

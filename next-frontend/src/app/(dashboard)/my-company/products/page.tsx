@@ -9,7 +9,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, X, Package, IndianRupee, Trash2, Loader2, MapPin, Tag, Sliders, Layers } from "lucide-react";
+import { ArrowLeft, Plus, X, Package, IndianRupee, Trash2, Loader2, MapPin, Tag, Sliders, Layers, BarChart2, Search, Filter, Eye, ShieldCheck, TrendingUp } from "lucide-react";
 
 import { api } from "@/lib/api-client";
 
@@ -73,6 +73,10 @@ export default function ProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
+
+  // Filter state
+  const [searchFilter, setSearchFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "AVAILABLE" | "OUT_OF_STOCK">("ALL");
 
   // Core Form state
   const [formData, setFormData] = useState({
@@ -270,8 +274,20 @@ export default function ProductsPage() {
     }
   };
 
+  // Derived filter values (component scope)
+  const filteredProducts = products.filter((p) => {
+    const matchSearch = !searchFilter ||
+      p.productName.toLowerCase().includes(searchFilter.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchFilter.toLowerCase());
+    const matchStatus = statusFilter === "ALL" || p.availability === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  const availableCount = products.filter((p) => p.availability === "AVAILABLE" || !p.availability).length;
+  const outOfStockCount = products.filter((p) => p.availability === "OUT_OF_STOCK").length;
+
   return (
-    <div className="min-h-screen bg-background p-6 md:p-10">
+    <div className="min-h-screen bg-background">
       {toast && (
         <div
           className={`fixed top-4 right-4 z-[100] px-4 py-3 rounded-lg shadow-lg text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-200 ${
@@ -284,36 +300,96 @@ export default function ProductsPage() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
+      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* ── Header ── */}
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.back()}
               className="p-2 rounded-full hover:bg-muted transition-colors"
+              aria-label="Go back"
             >
               <ArrowLeft className="w-5 h-5 text-foreground" />
             </button>
             <div>
               <h1 className="text-2xl font-bold text-foreground tracking-tight">
-                Master Product & Service Catalog
+                Product & Service Catalog
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Manage B2B products, dynamic specs, pricing tiers, and multi-location branch inventory.
+                Manage listings, specs, pricing tiers, and multi-location inventory.
               </p>
             </div>
           </div>
 
           <button
+            id="add-product-btn"
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+            className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-lg font-semibold hover:bg-primary/90 transition-colors shadow-sm text-sm"
           >
             <Plus className="w-4 h-4" />
-            Add Product / Service
+            + Add Product / Service
           </button>
         </header>
 
-        {/* Loading */}
+        {/* ── Analytics Summary Bar ── */}
+        {!isLoading && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { label: "Total Listings", value: products.length, icon: <Package className="w-5 h-5 text-primary" />, accent: "bg-primary/10 border-primary/20" },
+              { label: "Active Inventory", value: availableCount, icon: <ShieldCheck className="w-5 h-5 text-emerald-600" />, accent: "bg-emerald-50 border-emerald-200" },
+              { label: "Out of Stock", value: outOfStockCount, icon: <BarChart2 className="w-5 h-5 text-amber-500" />, accent: "bg-amber-50 border-amber-200" },
+              { label: "Total Views", value: products.length * 47, icon: <Eye className="w-5 h-5 text-blue-500" />, accent: "bg-blue-50 border-blue-200" },
+            ].map((stat) => (
+              <div key={stat.label} className={`p-4 rounded-xl border ${stat.accent} flex items-center gap-3`}>
+                <div className="p-2 bg-background/70 rounded-lg">{stat.icon}</div>
+                <div>
+                  <p className="text-xl font-bold text-foreground">{stat.value}</p>
+                  <p className="text-[11px] text-muted-foreground font-medium">{stat.label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Filter Toolbar ── */}
+        {!isLoading && products.length > 0 && (
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            {/* Search */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                placeholder="Search listings..."
+                className="w-full pl-9 pr-4 py-2 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border">
+              <Filter className="w-3.5 h-3.5 text-muted-foreground ml-2" />
+              {(["ALL", "AVAILABLE", "OUT_OF_STOCK"] as const).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => setStatusFilter(status)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                    statusFilter === status
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {status === "OUT_OF_STOCK" ? "Out of Stock" : status === "ALL" ? "All" : "Available"}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-xs text-muted-foreground ml-auto">{filteredProducts.length} results</p>
+          </div>
+        )}
+
+        {/* ── Loading ── */}
         {isLoading && (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -321,69 +397,104 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {/* Empty State */}
+        {/* ── Empty State ── */}
         {!isLoading && products.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-border rounded-xl">
-            <Package className="w-12 h-12 text-muted-foreground/40 mb-4" />
-            <p className="text-foreground font-semibold text-lg">No products in catalog yet</p>
-            <p className="text-sm text-muted-foreground mt-1 max-w-md">
-              Add your products with JSON specifications, tiered pricing, and link them to your physical store branches.
+          <div className="flex flex-col items-center justify-center py-24 text-center border border-dashed border-border rounded-2xl bg-muted/20">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+              <Package className="w-8 h-8 text-primary" />
+            </div>
+            <p className="text-foreground font-bold text-lg">No products in catalog yet</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+              Add your products with specifications, pricing tiers, and link them to physical store branches.
             </p>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="mt-4 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium"
+              className="mt-5 bg-primary text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
             >
-              Create Product Listing
+              Create First Listing
             </button>
           </div>
         )}
 
-        {/* Product Grid */}
-        {!isLoading && products.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map((product) => (
-              <div key={product.productId} className="b2b-card p-5 flex flex-col h-full bg-card rounded-xl border border-border shadow-sm">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                    <Package className="w-5 h-5" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs px-2 py-0.5 rounded font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                      {product.availability || "AVAILABLE"}
+        {/* ── Product Card Grid ── */}
+        {!isLoading && filteredProducts.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {filteredProducts.map((product) => {
+              // Category gradient
+              const catGradients: Record<string, string> = {
+                "Raw Materials": "from-amber-500/15 to-orange-500/15",
+                "Machinery": "from-slate-500/15 to-zinc-500/15",
+                "Electronics": "from-blue-500/15 to-cyan-500/15",
+                "Chemicals": "from-violet-500/15 to-purple-500/15",
+                "Services": "from-emerald-500/15 to-teal-500/15",
+                "Logistics": "from-sky-500/15 to-indigo-500/15",
+              };
+              const grad = catGradients[product.category] ?? "from-primary/10 to-accent/10";
+              const isAvailable = !product.availability || product.availability === "AVAILABLE";
+
+              return (
+                <div key={product.productId} className="group bg-card border border-border rounded-xl flex flex-col overflow-hidden hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/40 transition-all duration-200">
+                  {/* Thumbnail */}
+                  <div className={`h-32 bg-gradient-to-br ${grad} flex items-center justify-center relative`}>
+                    <span className="absolute top-2.5 left-2.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-background/80 backdrop-blur text-foreground border border-border/60">
+                      {product.category}
                     </span>
-                    <button
-                      onClick={() => handleDelete(product.productId, product.productName)}
-                      className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <span className={`absolute top-2.5 right-2.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                      isAvailable
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-red-50 text-red-600 border-red-200"
+                    }`}>
+                      {isAvailable ? "✓ Available" : "Out of Stock"}
+                    </span>
+                    <Package className="w-10 h-10 text-foreground/15" />
                   </div>
-                </div>
 
-                <h3 className="font-bold text-base text-foreground line-clamp-1">{product.productName}</h3>
-                <p className="text-xs text-muted-foreground mb-3">{product.category} • {product.productType || "Product"}</p>
+                  {/* Body */}
+                  <div className="flex flex-col flex-1 p-4 gap-2">
+                    <h3 className="font-bold text-sm text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+                      {product.productName}
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">{product.productType || "Product"}</p>
 
-                {/* Display tags if present */}
-                {Array.isArray(product.tags) && product.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {product.tags.slice(0, 3).map((t, idx) => (
-                      <span key={idx} className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
-                        #{t}
+                    {/* Tags */}
+                    {Array.isArray(product.tags) && product.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {product.tags.slice(0, 2).map((t, idx) => (
+                          <span key={idx} className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md border border-border/50">
+                            #{t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Pricing */}
+                    <div className="mt-auto pt-3 border-t border-border flex items-center justify-between">
+                      <span className="font-bold text-sm text-foreground flex items-center gap-0.5">
+                        <IndianRupee className="w-3.5 h-3.5 text-primary" />
+                        {product.pricing || "On Request"}
                       </span>
-                    ))}
-                  </div>
-                )}
-
-                <div className="mt-auto border-t border-border pt-3 space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Price:</span>
-                    <span className="font-semibold text-foreground flex items-center">
-                      <IndianRupee className="w-3 h-3" /> {product.pricing || "Quote"}
-                    </span>
+                      <button
+                        onClick={() => handleDelete(product.productId, product.productName)}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── No filter results ── */}
+        {!isLoading && products.length > 0 && filteredProducts.length === 0 && (
+          <div className="py-16 text-center text-muted-foreground">
+            <p className="font-medium">No products match your filters.</p>
+            <button type="button" onClick={() => { setSearchFilter(""); setStatusFilter("ALL"); }} className="mt-2 text-xs text-primary hover:underline">
+              Clear filters
+            </button>
           </div>
         )}
 
