@@ -176,6 +176,12 @@ const commonCustomers: CustomerItem[] = [
     industry: "Precision Forging",
     location: "Mundhwa, Pune",
   },
+  {
+    id: "c-cust-6",
+    name: "Bharat Forge Ltd",
+    industry: "Precision Forging",
+    location: "Mundhwa, Pune",
+  },
 ];
 
 // ---------------------------------------------------------------- Sample Products

@@ -22,15 +22,19 @@ Company page at /[company_id]/page.tsx
 /login/page.tsx
 
 ## Features :
-Plan schema for products or services
-Metadata and SEO
-Geolocation and others
-Personalized store front
+Top priority - Plan schema for products or services
+Top priority - Metadata and SEO
+Top priority - Geolocation and others
+Top priority - Github Action and rules
+
+Mid priority - Personalized store front
+
+Security
+Monitoring
 
 ____________________________________________________________________________________
 
 
 # ISSUES/BUGS
 
-UI
-home page should not display navbar
+UI 

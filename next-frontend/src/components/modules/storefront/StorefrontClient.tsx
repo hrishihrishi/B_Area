@@ -436,14 +436,10 @@ export default function StorefrontClient() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <div>
-              <p className="text-xs font-medium text-accent inline-flex items-center gap-1.5 mb-2">
-                <Sparkles className="w-3.5 h-3.5" />
-                Personalized storefront
-              </p>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                 Welcome back, {session.companyName}
               </h1>
-              <p className="text-muted-foreground mt-2 max-w-2xl">{copy.headline}</p>
+              {/* <p className="text-muted-foreground mt-2 max-w-2xl">{copy.headline}</p> */}
               <p className="text-sm text-muted-foreground/80 mt-1">{copy.sub}</p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -483,7 +479,7 @@ export default function StorefrontClient() {
               </button>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="pl-2 text-xs text-muted-foreground mt-2">
             {mode === "search" && query.trim().length >= 2
               ? "Showing fuzzy search results by relevance."
               : "Showing location-ranked listings (closest → farthest)."}

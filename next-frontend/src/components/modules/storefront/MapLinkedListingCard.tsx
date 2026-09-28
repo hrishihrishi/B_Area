@@ -64,11 +64,10 @@ export function MapLinkedListingCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border bg-primary/10 text-primary border-primary/20">
+          {/* <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border bg-primary/10 text-primary border-primary/20">
             <Package className="w-3.5 h-3.5" />
             {data.typeLabel}
-          </span>
-          {isVerified && <span className="badge-verified">Verified</span>}
+          </span> */}
         </div>
         {data.distanceKm != null && (
           <span className="text-[11px] font-mono text-muted-foreground whitespace-nowrap">
@@ -79,34 +78,35 @@ export function MapLinkedListingCard({
 
       <div>
         <h3 className="font-semibold text-foreground leading-snug line-clamp-2">{data.title}</h3>
-        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-          <Building2 className="w-3.5 h-3.5 shrink-0" />
-          {data.companyName}
-        </p>
+        
+
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded-md border border-border/60">
+        {/* <span className="inline-flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded-md border border-border/60">
           {data.category}
-        </span>
-        {data.city && (
-          <span className="inline-flex items-center gap-1">
-            <MapPin className="w-3.5 h-3.5 text-rose-500" />
-            {data.city}
+        </span> */}
+                {data.score != null && (
+          <span className="inline-flex items-center gap-0.5 text-[20px] font-mono text-black">
+            <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+            {data.score.toFixed(2)}
           </span>
         )}
+       
         {data.pricing && (
           <span className="inline-flex items-center gap-0.5 font-semibold text-foreground">
             <IndianRupee className="w-3 h-3" />
             {data.pricing}
           </span>
         )}
-        {data.score != null && (
-          <span className="inline-flex items-center gap-0.5 text-[10px] font-mono opacity-70">
-            <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-            {data.score.toFixed(2)}
+
+         {data.city && (
+          <span className="inline-flex items-center gap-1">
+            <MapPin className="w-3.5 h-3.5 text-rose-500" />
+            {data.city}
           </span>
         )}
+
       </div>
 
       {data.tags && data.tags.length > 0 && (
@@ -121,6 +121,10 @@ export function MapLinkedListingCard({
           ))}
         </div>
       )}
+              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+          <Building2 className="w-3.5 h-3.5 shrink-0" />
+          {data.companyName} {isVerified && <span className="badge-verified">Verified</span>}
+        </p>
 
       {(onSaveLead || onRemoveLead) && (
         <div className="pt-1 mt-auto flex gap-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -20,6 +20,7 @@ import {
   Loader2,
   Tag,
   Clock,
+  ChevronLeft,
   ChevronRight,
   TrendingUp,
   Info,
@@ -61,6 +62,49 @@ export default function ProductDetailPage() {
     phone: "",
     message: "",
   });
+
+  // Past Customers horizontal auto-scroll ref & hover state
+  const pastCustomerScrollRef = useRef<HTMLDivElement>(null);
+  const [isPastCustomerHovered, setIsPastCustomerHovered] = useState(false);
+
+  useEffect(() => {
+    const container = pastCustomerScrollRef.current;
+    if (!container) return;
+
+    const interval = setInterval(() => {
+      if (!isPastCustomerHovered) {
+        const maxScroll = container.scrollWidth - container.clientWidth;
+        if (container.scrollLeft >= maxScroll - 4) {
+          container.scrollLeft = 0;
+        } else {
+          container.scrollLeft += 1;
+        }
+      }
+    }, 20);
+
+    return () => clearInterval(interval);
+  }, [isPastCustomerHovered]);
+
+  const scrollPastCustomers = (direction: "left" | "right") => {
+    if (!pastCustomerScrollRef.current) return;
+    const container = pastCustomerScrollRef.current;
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    const scrollAmount = 552; // 2 cards (260px * 2 + 16px * 2)
+
+    if (direction === "right") {
+      if (container.scrollLeft >= maxScroll - 10) {
+        container.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        container.scrollBy({ left: scrollAmount, behavior: "smooth" });
+      }
+    } else {
+      if (container.scrollLeft <= 10) {
+        container.scrollTo({ left: maxScroll, behavior: "smooth" });
+      } else {
+        container.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+      }
+    }
+  };
 
   // Fetch DB data if available
   useEffect(() => {
@@ -239,6 +283,8 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Description */}
+                          {/* TODO(UI): trim it to one line and add a read more button*/}
+
               <div>
                 <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider mb-2">Product Description</h3>
                 <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-line">
@@ -476,9 +522,6 @@ export default function ProductDetailPage() {
             <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
               <Tag className="w-5 h-5 text-primary" /> Volume Pricing Tiers
             </h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              Transparent bulk pricing thresholds for commercial orders
-            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -514,9 +557,9 @@ export default function ProductDetailPage() {
             <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
               <Info className="w-5 h-5 text-primary" /> Technical Specifications
             </h2>
-            <p className="text-xs text-muted-foreground mt-1">
+            {/* <p className="text-xs text-muted-foreground mt-1">
               Detailed engineering attributes and performance standards
-            </p>
+            </p> */}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-xs">
@@ -538,29 +581,56 @@ export default function ProductDetailPage() {
             <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
               <Building2 className="w-5 h-5 text-primary" /> Past Buyers &amp; Client Companies
             </h2>
-            <p className="text-xs text-muted-foreground mt-1">
+            {/* <p className="text-xs text-muted-foreground mt-1">
               Companies that have procured this product listing
-            </p>
+            </p> */}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {pastCustomers.map((cust) => (
-              <div
-                key={cust.id}
-                className="p-4 rounded-xl bg-card border border-border flex items-start gap-3"
-              >
-                <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                  <Building2 className="w-4 h-4 text-primary" />
+          <div className="relative group flex items-center">
+            {/* Left Arrow */}
+            <button
+              onClick={() => scrollPastCustomers("left")}
+              className="absolute -left-3 z-10 p-2 rounded-full bg-background/90 border border-border shadow-md hover:bg-accent text-foreground transition-all focus:outline-none"
+              aria-label="Scroll Left"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+
+            {/* Horizontal Auto-Scrolling Container */}
+            <div
+              ref={pastCustomerScrollRef}
+              onMouseEnter={() => setIsPastCustomerHovered(true)}
+              onMouseLeave={() => setIsPastCustomerHovered(false)}
+              className="flex items-center gap-4 overflow-x-auto scroll-smooth py-2 w-full no-scrollbar"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              {pastCustomers.map((cust) => (
+                <div
+                  key={cust.id}
+                  className="w-[260px] shrink-0 p-4 rounded-xl bg-card border border-border flex items-start gap-3"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                    <Building2 className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-xs text-foreground">{cust.name}</h4>
+                    <p className="text-[11px] text-muted-foreground">{cust.industry}</p>
+                    <p className="text-[10px] text-muted-foreground/70 mt-1 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-rose-500" /> {cust.location}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold text-xs text-foreground">{cust.name}</h4>
-                  <p className="text-[11px] text-muted-foreground">{cust.industry}</p>
-                  <p className="text-[10px] text-muted-foreground/70 mt-1 flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-rose-500" /> {cust.location}
-                  </p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            {/* Right Arrow */}
+            <button
+              onClick={() => scrollPastCustomers("right")}
+              className="absolute -right-3 z-10 p-2 rounded-full bg-background/90 border border-border shadow-md hover:bg-accent text-foreground transition-all focus:outline-none"
+              aria-label="Scroll Right"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
         </section>
 
