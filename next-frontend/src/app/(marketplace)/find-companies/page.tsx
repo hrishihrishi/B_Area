@@ -13,7 +13,6 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Search, Building2, Package, MapPin, Briefcase, Loader2, X } from "lucide-react";
-
 import { api } from "@/lib/api-client";
 
 // ------------------------------------------------------------------ Types

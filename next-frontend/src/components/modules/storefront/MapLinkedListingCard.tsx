@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import {
   Building2,
   Package,
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 
 export interface ListingCardData {
   id: string;
+  companyId?: string;
   title: string;
   companyName: string;
   category: string;
@@ -28,28 +30,35 @@ export interface ListingCardData {
 
 interface MapLinkedListingCardProps {
   data: ListingCardData;
-  isSelected: boolean;
-  isSaved: boolean;
-  onSelect: () => void;
-  onSaveLead: () => void;
-  onRemoveLead: () => void;
+  isSelected?: boolean;
+  isSaved?: boolean;
+  onSelect?: () => void;
+  onSaveLead?: () => void;
+  onRemoveLead?: () => void;
 }
 
 export function MapLinkedListingCard({
   data,
-  isSelected,
-  isSaved,
+  isSelected = false,
+  isSaved = false,
   onSelect,
   onSaveLead,
   onRemoveLead,
 }: MapLinkedListingCardProps) {
+  const router = useRouter();
   const isVerified = data.verificationStatus?.toUpperCase() === "VERIFIED";
+
+  const handleCardClick = () => {
+    if (onSelect) onSelect();
+    const targetCompanyId = data.companyId || "c1";
+    router.push(`/${targetCompanyId}/${data.id}`);
+  };
 
   return (
     <article
       id={`listing-${data.id}`}
-      onClick={onSelect}
-      className={`b2b-card p-4 flex flex-col gap-3 cursor-pointer scroll-mt-24 ${
+      onClick={handleCardClick}
+      className={`b2b-card p-4 flex flex-col gap-3 cursor-pointer scroll-mt-24 hover:border-primary/50 transition-all ${
         isSelected ? "ring-2 ring-primary border-primary/60 shadow-md" : ""
       }`}
     >
@@ -94,7 +103,7 @@ export function MapLinkedListingCard({
         )}
         {data.score != null && (
           <span className="inline-flex items-center gap-0.5 text-[10px] font-mono opacity-70">
-            <Star className="w-3 h-3" />
+            <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
             {data.score.toFixed(2)}
           </span>
         )}
@@ -113,29 +122,31 @@ export function MapLinkedListingCard({
         </div>
       )}
 
-      <div className="pt-1 mt-auto flex gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant={isSaved ? "secondary" : "default"}
-          className="flex-1 text-xs"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (isSaved) onRemoveLead();
-            else onSaveLead();
-          }}
-        >
-          {isSaved ? (
-            <>
-              <BookmarkCheck className="w-3.5 h-3.5 mr-1" /> Saved lead
-            </>
-          ) : (
-            <>
-              <Bookmark className="w-3.5 h-3.5 mr-1" /> Save for conversion
-            </>
-          )}
-        </Button>
-      </div>
+      {(onSaveLead || onRemoveLead) && (
+        <div className="pt-1 mt-auto flex gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={isSaved ? "secondary" : "default"}
+            className="flex-1 text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isSaved && onRemoveLead) onRemoveLead();
+              else if (onSaveLead) onSaveLead();
+            }}
+          >
+            {isSaved ? (
+              <>
+                <BookmarkCheck className="w-3.5 h-3.5 mr-1" /> Saved lead
+              </>
+            ) : (
+              <>
+                <Bookmark className="w-3.5 h-3.5 mr-1" /> Save for conversion
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </article>
   );
 }
